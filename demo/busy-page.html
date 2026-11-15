@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MEGA DEALS DAILY — Demo busy page</title>
+<!--
+  CLEAR test page for calm mode and the Page Forecast. Everything is local:
+  no network requests. Each block is labelled with what CLEAR should do.
+
+  Contents: neon colours, CSS animations, a scrolling ticker, an animated GIF,
+  an autoplaying "video" (canvas stream), a video added after 3 seconds,
+  a JavaScript carousel, a popup after 5 seconds, a cookie banner, ad slots,
+  an iframe with autoplay allowed, an opt-in flash test, and long content.
+-->
+<style>
+  body { margin: 0; font-family: Impact, "Arial Black", sans-serif; background: #0f0; color: #f0f; }
+  header { background: #ff00ff; color: #ffff00; padding: 16px; text-align: center; animation: pulse 0.6s infinite alternate; }
+  header h1 { margin: 0; font-size: 2.5rem; text-shadow: 3px 3px #00ffff; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes ticker { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+  @keyframes bounce { 50% { transform: translateY(-14px); } }
+  .ticker { overflow: hidden; background: #000; color: #0ff; white-space: nowrap; padding: 6px 0; }
+  .ticker span { display: inline-block; animation: ticker 8s linear infinite; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 16px; }
+  .card { background: #ffff00; color: #f00; border: 6px dashed #00f; padding: 12px; }
+  .card h2 { margin-top: 0; }
+  .label { font: 12px/1.4 system-ui, sans-serif; color: #000; background: #fff; padding: 2px 6px; display: inline-block; margin-bottom: 8px; }
+  .spinner { width: 60px; height: 60px; border: 10px solid #f0f; border-top-color: #0ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .buy { background: #f00; color: #fff; font-size: 1.5rem; border: 0; padding: 10px 20px; animation: bounce 0.5s infinite; transition: background 0.3s; }
+  .buy:hover { background: #00f; }
+  .carousel { position: relative; height: 120px; overflow: hidden; }
+  .slide { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6rem; color: #fff; }
+  .ad-slot { background: repeating-linear-gradient(45deg, #f0f, #f0f 10px, #0ff 10px, #0ff 20px); min-height: 90px; display: grid; place-items: center; color: #000; font-weight: bold; }
+  video, canvas.source { width: 100%; background: #000; display: block; }
+  iframe { width: 100%; height: 160px; border: 4px solid #f00; }
+  #flash-zone { width: 100%; height: 80px; background: #000; }
+  .article { grid-column: 1 / -1; background: #fff; color: #222; font-family: Georgia, serif; padding: 16px 24px; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; place-items: center; z-index: 10; }
+  .modal-backdrop.open { display: grid; }
+  .modal { background: #ff0; color: #f00; padding: 24px; border: 8px solid #f0f; max-width: 360px; text-align: center; animation: bounce 0.4s infinite; }
+  .cookie-banner { position: fixed; left: 0; right: 0; bottom: 0; background: #00f; color: #fff; padding: 12px 16px; font: 14px system-ui, sans-serif; display: flex; gap: 12px; align-items: center; justify-content: space-between; z-index: 9; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 MEGA DEALS DAILY 🔥</h1>
+  <p>HURRY!!! OFFERS END IN <span id="countdown">09:59</span>!!!</p>
+</header>
+
+<div class="ticker" aria-label="Scrolling news ticker">
+  <span>BREAKING: PRICES SLASHED ★ FREE SHIPPING ★ LIMITED STOCK ★ ONLY 3 LEFT ★ 2 PEOPLE ARE LOOKING AT THIS RIGHT NOW ★</span>
+</div>
+
+<main>
+  <section class="card">
+    <span class="label">Expect: animations paused</span>
+    <h2>Spinning deal finder</h2>
+    <div class="spinner" aria-hidden="true"></div>
+    <p><button class="buy" type="button">BUY NOW</button></p>
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: GIF frozen on first frame</span>
+    <h2>Animated GIF</h2>
+    <img id="demo-gif" alt="Checkerboard animation that changes colour" width="128" height="128" style="image-rendering: pixelated" src="data:image/gif;base64,R0lGODlhIAAgAPEAAP8A/wD/////ABQUFCH/C05FVFNDQVBFMi4wAwEAAAAh+QQAKAAAACwAAAAAIAAgAAAC/0yYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAkyYMGFCgAABAgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIECDAhAkTJgQIEP8gwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyZMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQJMmDBhQoAAAQIECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIQJEyYECBAgwIRDCRMmBAgQIMCECRMmBAgQIMCECRMmBAgQIMCECRMmBAgQIMCECRMmBAgQIMCECRMmBAgQIMCECRMmBAgQIMCECRMmBQAh+QQAKAAAACwAAAAAIAAgAAAC/9y4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSty4ceNGiRIlSpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUaLEjRs3bpQoUf+ixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN27cuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUrcuHHjRokSJUqUKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI0bN26UKFGixI1DGzdulChRosSNGzdulChRosSNGzdulChRosSNGzdulChRosSNGzdulChRosSNGzdulChRosSNGzdulChRosSNGzduBQA7" />
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: video paused, autoplay stopped</span>
+    <h2>Autoplaying video</h2>
+    <video id="autoplay-video" autoplay muted loop playsinline></video>
+    <div id="late-video-slot"><p class="label">A second video appears here after 3 seconds.</p></div>
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: carousel stopped</span>
+    <h2>Top picks</h2>
+    <div class="carousel" id="carousel">
+      <div class="slide" style="background:#f00">Deal 1: Headphones −70%</div>
+      <div class="slide" style="background:#0a0">Deal 2: Blender −55%</div>
+      <div class="slide" style="background:#00f">Deal 3: Sneakers −80%</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: counted as ad, dimmed or hidden</span>
+    <h2>Sponsored</h2>
+    <div class="ad-slot" data-ad-slot="top">ADVERTISEMENT</div>
+    <iframe class="ad-slot" title="Advertisement" data-ad-slot="side"
+      srcdoc="<body style='margin:0;background:#f0f;font:bold 20px sans-serif;display:grid;place-items:center;height:100vh'><span style='animation:b .3s infinite alternate'>CLICK ME!!!</span><style>@keyframes b{to{transform:scale(1.3)}}</style></body>"></iframe>
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: autoplay removed from iframe, click-to-load</span>
+    <h2>Embedded player</h2>
+    <iframe id="embed" title="Embedded player" allow="autoplay; fullscreen"
+      srcdoc="<body style='margin:0;background:#000;color:#0f0;font:16px monospace;display:grid;place-items:center;height:100vh'><p>Embedded player (local stand-in for a YouTube embed)</p></body>"></iframe>
+  </section>
+
+  <section class="card">
+    <span class="label">Expect: flashing detected and covered</span>
+    <h2>Flash test (opt-in)</h2>
+    <p style="font-family: system-ui, sans-serif; color: #000; background: #fff; padding: 8px">
+      Warning: this flashes 5 times per second for 5 seconds. Do not start it if flashing
+      light affects you.
+    </p>
+    <div id="flash-zone" aria-hidden="true"></div>
+    <p><button type="button" id="flash-start">Start flash test</button></p>
+  </section>
+
+  <article class="article">
+    <span class="label">Expect: counted in word count, reading time and page length</span>
+    <h2>Why you need these deals today</h2>
+    <div id="long-text"></div>
+  </article>
+</main>
+
+<div class="modal-backdrop" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <h2 id="modal-title">WAIT! DON'T GO!</h2>
+    <p>Sign up now for 10% off your first order!</p>
+    <button type="button" id="modal-close">No thanks, I hate saving money</button>
+  </div>
+</div>
+
+<div class="cookie-banner" id="cookie-banner" role="region" aria-label="Cookie consent">
+  <span>We use cookies to improve your experience. By continuing you accept all cookies.</span>
+  <span><button type="button">Accept all</button> <button type="button">Settings</button></span>
+</div>
+
+<script>
+  // Autoplaying "video" from a canvas, so the page needs no video file.
+  function makeMovingStream(colourA, colourB) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 320; canvas.height = 180;
+    const g = canvas.getContext('2d');
+    let x = 0;
+    setInterval(() => {
+      g.fillStyle = colourA; g.fillRect(0, 0, 320, 180);
+      g.fillStyle = colourB; g.fillRect(x, 50, 80, 80);
+      x = (x + 8) % 320;
+    }, 33);
+    return canvas.captureStream(30);
+  }
+  const video = document.getElementById('autoplay-video');
+  video.srcObject = makeMovingStream('#200040', '#ff0');
+  video.play().catch(() => {});
+
+  // A second video inserted later, to test that CLEAR catches new media.
+  setTimeout(() => {
+    const late = document.createElement('video');
+    late.muted = true; late.loop = true; late.autoplay = true; late.playsInline = true;
+    late.srcObject = makeMovingStream('#400000', '#0ff');
+    document.getElementById('late-video-slot').replaceChildren(late);
+    late.play().catch(() => {});
+  }, 3000);
+
+  // JavaScript carousel.
+  const slides = [...document.querySelectorAll('#carousel .slide')];
+  let current = 0;
+  const show = () => slides.forEach((s, i) => (s.style.display = i === current ? 'grid' : 'none'));
+  show();
+  setInterval(() => { current = (current + 1) % slides.length; show(); }, 1500);
+
+  // Countdown that never really ends.
+  let seconds = 599;
+  setInterval(() => {
+    seconds = seconds > 0 ? seconds - 1 : 599;
+    document.getElementById('countdown').textContent =
+      String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+  }, 1000);
+
+  // Popup after 5 seconds.
+  setTimeout(() => document.getElementById('modal').classList.add('open'), 5000);
+  document.getElementById('modal-close').onclick = () =>
+    document.getElementById('modal').classList.remove('open');
+
+  // Opt-in flash test: 5 Hz (above the WCAG 2.3.1 limit of 3) for 5 seconds.
+  document.getElementById('flash-start').onclick = () => {
+    const zone = document.getElementById('flash-zone');
+    let on = false;
+    const timer = setInterval(() => { on = !on; zone.style.background = on ? '#fff' : '#000'; }, 100);
+    setTimeout(() => { clearInterval(timer); zone.style.background = '#000'; }, 5000);
+  };
+
+  // Long article for word count and page length.
+  const paragraph =
+    'Every day you wait is a day you miss out. Our deals change every hour, sometimes every minute, ' +
+    'and the best prices go to the people who act fast. Thousands of shoppers have already saved big, ' +
+    'and the clock is ticking for you too. Read on to find out why experts say now is the time to buy. ';
+  document.getElementById('long-text').innerHTML =
+    Array.from({ length: 30 }, () => '<p>' + paragraph.repeat(2) + '</p>').join('');
+</script>
+</body>
+</html>

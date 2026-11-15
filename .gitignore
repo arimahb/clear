@@ -24,3 +24,7 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Local environment (clarify origin, API keys)
+.env
+.env.*
