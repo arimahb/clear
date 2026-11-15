@@ -1,5 +1,5 @@
 {
-  "permissions": ["activeTab", "contextMenus", "scripting", "sidePanel", "storage"],
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
   "optional_permissions": [],
   "host_permissions": [],
   "optional_host_permissions": ["http://*/*", "https://*/*"],

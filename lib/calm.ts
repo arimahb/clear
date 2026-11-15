@@ -1,6 +1,6 @@
 // Calm mode: stops autoplay, motion and flashing on the current page, hides
-// popups that open by themselves, and can dim ads and soften colours. Runs only on the device and makes no network
-// requests. Every change is recorded so stop() puts the page back.
+// popups that open by themselves, and can dim ads and soften colours. Runs only
+// on the device and makes no network requests. Every change is recorded so stop() puts the page back.
 //
 // The CSS half (lib/calm-css.ts) is inserted by the background; this file
 // switches it on by setting attributes on <html>.
@@ -36,9 +36,10 @@ const USER_POPUP_GRACE_MS = 1000;
 const POPUP_GROUP_MS = 300;
 const STRONG_POPUP = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
 
-
 export function startCalm(settings: CalmSettings): CalmSession {
   const undo: Array<() => void> = [];
+  // Set by stop(). Work that finishes later (an image loading) must not change the page after that.
+  let stopped = false;
   let changes = 0;
   const count = () => {
     changes += 1;
@@ -71,7 +72,8 @@ export function startCalm(settings: CalmSettings): CalmSession {
     const timer = window.setInterval(pauseScriptAnimations, 2000);
     undo.push(() => {
       clearInterval(timer);
-      for (const animation of pausedAnimations) animation.play();
+      // Skip animations the page has since cancelled or finished, so they don't restart.
+      for (const animation of pausedAnimations) if (animation.playState === 'paused') animation.play();
     });
   }
 
@@ -150,7 +152,7 @@ export function startCalm(settings: CalmSettings): CalmSession {
     if (frozenGifs.has(img) || !isGif(img)) return;
     frozenGifs.add(img);
     const draw = () => {
-      if (!img.isConnected || !img.naturalWidth) return;
+      if (stopped || !img.isConnected || !img.naturalWidth) return;
       const canvas = document.createElement('canvas');
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
@@ -174,7 +176,10 @@ export function startCalm(settings: CalmSettings): CalmSession {
       count();
     };
     if (img.complete) draw();
-    else img.addEventListener('load', draw, { once: true });
+    else {
+      img.addEventListener('load', draw, { once: true });
+      undo.push(() => img.removeEventListener('load', draw));
+    }
   };
 
   const freezeGifsIn = (scope: ParentNode) => {
@@ -241,7 +246,7 @@ export function startCalm(settings: CalmSettings): CalmSession {
   // and lists it in the notices with a "Show it" button.
   const hiddenPopups = new WeakSet<HTMLElement>();
   const userShown = new WeakSet<HTMLElement>();
-  let group: { at: number; restores: Array<() => void> } | null = null;
+  let group: { at: number; elements: HTMLElement[]; restores: Array<() => void> } | null = null;
 
   const unlockScroll = () => {
     for (const element of [document.documentElement, document.body]) {
@@ -264,9 +269,10 @@ export function startCalm(settings: CalmSettings): CalmSession {
 
     const now = performance.now();
     if (group && now - group.at < POPUP_GROUP_MS) {
+      group.elements.push(element);
       group.restores.push(restore);
     } else {
-      const current = { at: now, restores: [restore] };
+      const current = { at: now, elements: [element], restores: [restore] };
       group = current;
       const removeNotice = cover.notice(
         isCookieBanner
@@ -275,7 +281,8 @@ export function startCalm(settings: CalmSettings): CalmSession {
         'Show it',
         () => {
           for (const step of current.restores) step();
-          userShown.add(element);
+          // Mark every part (the dialog and its backdrop), so none is hidden again.
+          for (const part of current.elements) userShown.add(part);
         },
       );
       undo.push(removeNotice);
@@ -417,6 +424,8 @@ export function startCalm(settings: CalmSettings): CalmSession {
       event.preventDefault();
       event.stopPropagation();
       restore();
+      // Leave the live text alone from now on, or it would be stopped again.
+      cover.revealed.add(element);
     };
     still.addEventListener('click', reveal);
     still.addEventListener('keydown', reveal);
@@ -445,6 +454,7 @@ export function startCalm(settings: CalmSettings): CalmSession {
 
   return {
     stop() {
+      stopped = true;
       for (const step of undo.reverse()) step();
       undo.length = 0;
     },

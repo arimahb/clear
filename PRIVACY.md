@@ -60,10 +60,10 @@ the server would see your text but not your IP address.
 
 | Permission | Why |
 |---|---|
-| `activeTab` | Lets CLEAR work on the current tab, only after you click CLEAR, use its shortcut or use its menu |
+| `activeTab` | Lets CLEAR work on the current tab, only after you click CLEAR or use its shortcut |
 | `scripting` | Lets CLEAR add its calming code to that tab |
 | `storage` | Saves your settings on your device |
 | `sidePanel` | Shows CLEAR's panel |
-| `contextMenus` | Adds "Explain this with CLEAR" when you right-click selected text |
+| `contextMenus` *(not requested yet)* | Will add "Explain this with CLEAR" when you right-click selected text |
 | Access to a site you choose *(optional, not built yet)* | Lets CLEAR calm that site as it loads, before you click anything. You approve each site, and you can remove it in the side panel. |
 | Access to all sites *(optional, not built yet)* | Only if you choose it. The rules above still apply: page content never leaves your device. |

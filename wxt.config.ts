@@ -13,7 +13,8 @@ export default defineConfig({
       'Calms busy web pages, previews what a page contains, and explains confusing messages in plain language.',
     // Keep this list in sync with scripts/manifest-permissions.snapshot.json.
     // `sidePanel` is added by WXT because entrypoints/sidepanel exists.
-    permissions: ['activeTab', 'scripting', 'storage', 'contextMenus'],
+    // `contextMenus` comes back with "Explain text" (step 5); unused permissions stay out.
+    permissions: ['activeTab', 'scripting', 'storage'],
     // Granted one origin at a time, only when the user turns on "always on" for a site.
     optional_host_permissions: ['https://*/*', 'http://*/*'],
     action: { default_title: 'CLEAR: calm this page' },

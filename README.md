@@ -124,11 +124,13 @@ table failed, and a screenshot if you can.
 
 ## Permissions
 
-Requested at install: `activeTab`, `scripting`, `storage`, `sidePanel`, `contextMenus`.
-CLEAR can only touch a page after you click it, use its shortcut or use its menu item.
+Requested at install: `activeTab`, `scripting`, `storage`, `sidePanel`.
+CLEAR can only touch a page after you click it or use its shortcut. `contextMenus` will be
+added with "Explain text" (step 5), for its right-click menu item.
 
-Site access (`optional_host_permissions`) is requested one site at a time, only when you
-choose "always on" for that site, and can be removed from the side panel at any time.
+Site access (`optional_host_permissions`) is declared but not yet requested. From step 4 it
+will be requested one site at a time, only when you choose "always on" for that site, and
+can be removed from the side panel at any time.
 
 ## Development
 

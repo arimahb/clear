@@ -8,6 +8,10 @@ import { loadSettings } from '@/lib/settings';
 const TITLE_OFF = 'CLEAR: calm this page';
 const TITLE_ON = 'CLEAR: calm mode is on. Click to undo.';
 const TITLE_BLOCKED = 'CLEAR cannot change this page';
+const TITLE_RELOAD = 'CLEAR was updated. Reload this page to use it here.';
+
+// Tabs with a toggle in progress, so a quick double click can't run two at once.
+const busy = new Set<number>();
 
 async function showState(tabId: number, active: boolean): Promise<void> {
   await browser.action.setBadgeBackgroundColor({ tabId, color: '#2f5d62' });
@@ -26,12 +30,20 @@ async function toggleCalm(tabId: number): Promise<void> {
   }
 
   // The top frame decides the new state, so all frames switch together.
-  const current = (await browser.tabs.sendMessage(tabId, { type: 'calm/query' } satisfies Message, {
-    frameId: 0,
-  })) as Message;
-  const active = current.type === 'calm/status' && current.active;
+  let current: Message | undefined;
+  try {
+    current = (await browser.tabs.sendMessage(tabId, { type: 'calm/query' } satisfies Message, {
+      frameId: 0,
+    })) as Message | undefined;
+  } catch {
+    // No listener: a copy from before CLEAR was updated still holds the page.
+  }
+  if (current?.type !== 'calm/status') {
+    await browser.action.setTitle({ tabId, title: TITLE_RELOAD });
+    return;
+  }
 
-  if (active) {
+  if (current.active) {
     await browser.tabs.sendMessage(tabId, { type: 'calm/undo' } satisfies Message);
     await browser.scripting.removeCSS({ target, css: CALM_CSS }).catch(() => {});
   } else {
@@ -43,14 +55,27 @@ async function toggleCalm(tabId: number): Promise<void> {
       showForecast: forecast.showBar,
     } satisfies Message);
   }
-  await showState(tabId, !active);
+  await showState(tabId, !current.active);
+}
+
+function onToggle(tabId: number): void {
+  if (busy.has(tabId)) return;
+  busy.add(tabId);
+  toggleCalm(tabId)
+    .catch(() => browser.action.setTitle({ tabId, title: TITLE_BLOCKED }))
+    .finally(() => busy.delete(tabId));
 }
 
 export default defineBackground(() => {
   browser.action.onClicked.addListener((tab) => {
-    if (tab.id !== undefined) void toggleCalm(tab.id);
+    if (tab.id !== undefined) onToggle(tab.id);
   });
   browser.commands.onCommand.addListener((command, tab) => {
-    if (command === 'toggle-calm' && tab?.id !== undefined) void toggleCalm(tab.id);
+    if (command === 'toggle-calm' && tab?.id !== undefined) onToggle(tab.id);
+  });
+  // A new page starts uncalmed, so clear the badge. Needs no `tabs` permission:
+  // only the status is read, never the address.
+  browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading') void showState(tabId, false).catch(() => {});
   });
 });
