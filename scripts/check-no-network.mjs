@@ -6,9 +6,12 @@ import { join } from 'node:path';
 
 const SOURCES = [
   'entrypoints/content.ts',
+  'entrypoints/auto.content.ts',
   'entrypoints/page.content.ts',
+  'lib/content-main.ts',
+  'lib/settings.ts',
   'lib/calm.ts',
-  'lib/calm-css.ts',
+  'public/calm.css',
   'lib/cover.ts',
   'lib/motion-watch.ts',
   'lib/forecast.ts',
@@ -16,6 +19,8 @@ const SOURCES = [
   'lib/page-signals.ts',
 ];
 const BUNDLE_DIR = process.argv[2] ?? '.output/chrome-mv3/content-scripts';
+// Stylesheets CLEAR inserts into pages, from the built extension.
+const BUILT_CSS = ['.output/chrome-mv3/calm.css'];
 
 const FORBIDDEN = [
   [/\bfetch\s*\(/, 'fetch()'],
@@ -28,6 +33,9 @@ const FORBIDDEN = [
   [/\bimport\s*\(\s*['"`]https?:/, 'remote import()'],
   // Any remote URL literal could become an <img>, <script> or <link> request.
   [/['"`]https?:\/\/(?!www\.w3\.org\/)/, 'remote URL literal'],
+  // CSS can load files too: url(...) and @import, quoted or not.
+  [/\burl\(\s*['"]?\s*(https?:)?\/\//i, 'remote CSS url()'],
+  [/@import\b/i, 'CSS @import'],
 ];
 
 const files = SOURCES.filter((file) => existsSync(file));
@@ -36,6 +44,13 @@ if (!existsSync(BUNDLE_DIR)) {
   process.exit(1);
 }
 files.push(...readdirSync(BUNDLE_DIR).map((name) => join(BUNDLE_DIR, name)));
+for (const file of BUILT_CSS) {
+  if (!existsSync(file)) {
+    console.error(`Missing ${file}. Run "npm run build" first.`);
+    process.exit(1);
+  }
+  files.push(file);
+}
 
 const errors = [];
 for (const file of files) {

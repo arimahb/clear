@@ -8,6 +8,8 @@ import {
   isGif,
   isMediaEmbed,
   isOwnUi,
+  isPopupLike,
+  isShown,
   looksLikeAd,
   looksLikeCookieBanner,
   outermost,
@@ -30,16 +32,19 @@ export function scanPage(): Forecast {
   const marquees = document.querySelectorAll('marquee').length;
 
   const cookieBanners = [...document.querySelectorAll<HTMLElement>('body *')].filter(
-    (element) => !isOwnUi(element) && looksLikeCookieBanner(element),
+    (element) => !isOwnUi(element) && looksLikeCookieBanner(element) && isShown(element),
   );
+  // Only what is showing: many sites keep hidden dialog templates and empty ad
+  // slots in the page that never appear.
   const popups = outermost(
     [...document.querySelectorAll(POPUP_CANDIDATES)].filter(
-      (element) => !isOwnUi(element) && !cookieBanners.some((banner) => banner.contains(element)),
+      (element) =>
+        !isOwnUi(element) && isPopupLike(element) && !cookieBanners.some((banner) => banner.contains(element)),
     ),
-  );
+  ).filter(isShown);
   const ads = outermost(
     [...document.querySelectorAll(AD_CANDIDATES)].filter((element) => !isOwnUi(element) && looksLikeAd(element)),
-  );
+  ).filter(isShown);
 
   const words = countWords(mainText());
 

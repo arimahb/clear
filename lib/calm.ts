@@ -2,8 +2,9 @@
 // popups that open by themselves, and can dim ads and soften colours. Runs only
 // on the device and makes no network requests. Every change is recorded so stop() puts the page back.
 //
-// The CSS half (lib/calm-css.ts) is inserted by the background; this file
-// switches it on by setting attributes on <html>.
+// The CSS half (public/calm.css) is inserted by the background or by the
+// "every website" registration; this file switches it on by setting
+// attributes on <html>.
 
 import { CLEAR_UI_ATTR, CoverLayer } from './cover';
 import { watchMotion } from './motion-watch';
@@ -12,9 +13,9 @@ import {
   POPUP_CANDIDATES,
   isGif,
   isMediaEmbed,
+  isPopupLike,
   isShown,
   looksLikeAd,
-  looksLikeBackdrop,
   looksLikeCookieBanner,
 } from './page-signals';
 import type { CalmSettings } from './protocol';
@@ -34,9 +35,41 @@ const USER_PLAY_GRACE_MS = 1000;
 const USER_POPUP_GRACE_MS = 1000;
 // Popup parts hidden this close together (a dialog and its backdrop) share one notice.
 const POPUP_GROUP_MS = 300;
-const STRONG_POPUP = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
 
-export function startCalm(settings: CalmSettings): CalmSession {
+/**
+ * Turn on the CSS half only (frozen motion, softer colours) while the page is
+ * still loading. Returns a function that turns it off again.
+ */
+export function markCalmEarly(settings: CalmSettings): () => void {
+  const root = document.documentElement;
+  if (settings.freezeAnimations) root.setAttribute(FREEZE_ATTR, '');
+  if (settings.colourMode !== 'off') root.setAttribute(COLOUR_ATTR, settings.colourMode);
+  return () => {
+    root.removeAttribute(FREEZE_ATTR);
+    root.removeAttribute(COLOUR_ATTR);
+  };
+}
+
+export interface CalmOptions {
+  /**
+   * Resolves when the page's own scripts have probably finished building it.
+   * Until then calm mode only restyles elements and doesn't add or swap any:
+   * sites built with React and similar tools fail to start ("hydration
+   * errors") when the page's structure changes under them while they start.
+   * Leave out when the page has already loaded.
+   */
+  restructureAfter?: Promise<void>;
+}
+
+/** Sets an !important inline style. Returns a function that puts the page's own value back. */
+function setStyle(element: HTMLElement, name: string, value: string): () => void {
+  const previous = element.style.getPropertyValue(name);
+  const priority = element.style.getPropertyPriority(name);
+  element.style.setProperty(name, value, 'important');
+  return () => element.style.setProperty(name, previous, priority);
+}
+
+export function startCalm(settings: CalmSettings, options: CalmOptions = {}): CalmSession {
   const undo: Array<() => void> = [];
   // Set by stop(). Work that finishes later (an image loading) must not change the page after that.
   let stopped = false;
@@ -44,6 +77,18 @@ export function startCalm(settings: CalmSettings): CalmSession {
   const count = () => {
     changes += 1;
   };
+
+  let canRestructure = !options.restructureAfter;
+  const waiting: Array<() => void> = [];
+  const whenCanRestructure = (step: () => void) => {
+    if (canRestructure) step();
+    else waiting.push(step);
+  };
+  void options.restructureAfter?.then(() => {
+    if (stopped) return;
+    canRestructure = true;
+    for (const step of waiting.splice(0)) step();
+  });
   const root = document.documentElement;
   const cover = new CoverLayer();
   undo.push(() => cover.destroy());
@@ -112,10 +157,18 @@ export function startCalm(settings: CalmSettings): CalmSession {
     }
   };
 
+  const heldEmbeds = new WeakSet<HTMLIFrameElement>();
   const holdEmbed = (iframe: HTMLIFrameElement) => {
-    if (!isMediaEmbed(iframe)) return;
-    cover.hold(iframe, 'Embedded video or audio. It will not load until you choose.', 'Load it');
-    count();
+    if (heldEmbeds.has(iframe) || !isMediaEmbed(iframe)) return;
+    heldEmbeds.add(iframe);
+    // Keep it out of sight until it can be swapped for the placeholder.
+    const show = canRestructure ? () => {} : setStyle(iframe, 'visibility', 'hidden');
+    undo.push(show);
+    whenCanRestructure(() => {
+      show();
+      cover.hold(iframe, 'Embedded video or audio. It will not load until you choose.', 'Load it');
+      count();
+    });
   };
 
   if (settings.pauseMedia) {
@@ -151,6 +204,8 @@ export function startCalm(settings: CalmSettings): CalmSession {
   const freezeGif = (img: HTMLImageElement) => {
     if (frozenGifs.has(img) || !isGif(img)) return;
     frozenGifs.add(img);
+    // Keep it out of sight (but in place) until the still copy can be added.
+    if (!canRestructure) undo.push(setStyle(img, 'opacity', '0'));
     const draw = () => {
       if (stopped || !img.isConnected || !img.naturalWidth) return;
       const canvas = document.createElement('canvas');
@@ -175,11 +230,13 @@ export function startCalm(settings: CalmSettings): CalmSession {
       });
       count();
     };
-    if (img.complete) draw();
-    else {
-      img.addEventListener('load', draw, { once: true });
-      undo.push(() => img.removeEventListener('load', draw));
-    }
+    whenCanRestructure(() => {
+      if (img.complete) draw();
+      else {
+        img.addEventListener('load', draw, { once: true });
+        undo.push(() => img.removeEventListener('load', draw));
+      }
+    });
   };
 
   const freezeGifsIn = (scope: ParentNode) => {
@@ -293,15 +350,6 @@ export function startCalm(settings: CalmSettings): CalmSession {
       const timer = window.setTimeout(unlockScroll, delay);
       undo.push(() => clearTimeout(timer));
     }
-  };
-
-  const isPopupLike = (element: HTMLElement) => {
-    if (element.matches(STRONG_POPUP)) return true;
-    if (looksLikeBackdrop(element)) return true;
-    if (!element.matches(POPUP_CANDIDATES)) return false;
-    // "modal" or "popup" in a class name alone is weak: also require it to float.
-    const position = getComputedStyle(element).position;
-    return position === 'fixed' || position === 'absolute';
   };
 
   const considerPopup = (element: HTMLElement) => {

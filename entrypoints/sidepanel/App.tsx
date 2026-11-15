@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CalmSettings, ColourMode, Settings } from '@/lib/protocol';
+import { EVERY_SITE_ORIGINS, type CalmSettings, type ColourMode, type Settings } from '@/lib/protocol';
 import { loadSettings, saveSettings } from '@/lib/settings';
 
 type CalmSwitch = Exclude<keyof CalmSettings, 'colourMode'>;
@@ -38,11 +38,32 @@ const COLOUR_OPTIONS: Array<{ value: ColourMode; label: string; detail: string }
   { value: 'greyscale', label: 'Greyscale', detail: 'No colour. Colour that carries meaning (like red errors) is lost.' },
 ];
 
+const everySiteAllowed = () => browser.permissions.contains({ origins: EVERY_SITE_ORIGINS });
+
+/** The host name of the page in the current tab, if CLEAR may see it. */
+async function currentSite(): Promise<string | null> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url) return null;
+  const url = new URL(tab.url);
+  return url.protocol === 'https:' || url.protocol === 'http:' ? url.hostname : null;
+}
+
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [everySite, setEverySite] = useState(false);
+  const [skipMessage, setSkipMessage] = useState('');
 
   useEffect(() => {
     void loadSettings().then(setSettings);
+    // Follow the permission itself: it can also be removed in chrome://extensions.
+    const refresh = () => void everySiteAllowed().then(setEverySite);
+    refresh();
+    browser.permissions.onAdded.addListener(refresh);
+    browser.permissions.onRemoved.addListener(refresh);
+    return () => {
+      browser.permissions.onAdded.removeListener(refresh);
+      browser.permissions.onRemoved.removeListener(refresh);
+    };
   }, []);
 
   const update = (next: Settings) => {
@@ -58,13 +79,37 @@ export default function App() {
   const toggleForecast = () => {
     if (settings) update({ ...settings, forecast: { showBar: !settings.forecast.showBar } });
   };
+  const toggleEverySite = () => {
+    // Chrome only shows the permission prompt during the click itself, so ask
+    // before anything else is awaited.
+    const change = everySite
+      ? browser.permissions.remove({ origins: EVERY_SITE_ORIGINS })
+      : browser.permissions.request({ origins: EVERY_SITE_ORIGINS });
+    void change.then(everySiteAllowed).then(setEverySite);
+  };
+  const setSkipSites = (skipSites: string[]) => {
+    if (settings) update({ ...settings, everySite: { skipSites } });
+  };
+  const skipCurrentSite = async () => {
+    if (!settings) return;
+    const site = await currentSite();
+    if (!site) {
+      setSkipMessage('The current tab is not a website CLEAR can change.');
+    } else if (settings.everySite.skipSites.includes(site)) {
+      setSkipMessage(`${site} is already skipped.`);
+    } else {
+      setSkipSites([...settings.everySite.skipSites, site].sort());
+      setSkipMessage(`${site} will be left alone from the next time it loads.`);
+    }
+  };
 
   return (
     <main>
       <h1>CLEAR</h1>
       <p>
         To calm a page, click the CLEAR button in the toolbar, or press <kbd>Alt</kbd>+
-        <kbd>Shift</kbd>+<kbd>C</kbd> (<kbd>Option</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> on a Mac). Do the same again to undo. Nothing changes until you do.
+        <kbd>Shift</kbd>+<kbd>C</kbd> (<kbd>Option</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> on a Mac). Do the same again to undo.{' '}
+        {everySite ? 'Calm mode also starts by itself on every website.' : 'Nothing changes until you do.'}
       </p>
 
       <h2>What calm mode does</h2>
@@ -77,7 +122,7 @@ export default function App() {
               <span>
                 <strong>Show the Page Forecast</strong>
                 <span className="muted">
-                  A bar at the top listing videos, moving parts, popups, ads and page length.
+                  A small box in the bottom-right corner listing videos, moving parts, popups, ads and page length.
                 </span>
               </span>
             </label>
@@ -114,6 +159,52 @@ export default function App() {
             </label>
           ))}
         </fieldset>
+      )}
+
+      <h2>Every website</h2>
+      <ul className="options">
+        <li>
+          <label>
+            <input type="checkbox" checked={everySite} onChange={toggleEverySite} />
+            <span>
+              <strong>Calm every website automatically</strong>
+              <span className="muted">
+                Pages are calmed as they open, without clicking CLEAR. Chrome will say CLEAR can “read and change all
+                your data on all websites”. CLEAR needs that to change pages, but does all its work on your device:
+                it never sends the pages you visit, or anything on them, anywhere. Click CLEAR on a page to undo
+                calm mode there.
+              </span>
+            </span>
+          </label>
+        </li>
+      </ul>
+      {settings && everySite && (
+        <section className="skip" aria-labelledby="skip-heading">
+          <h3 id="skip-heading">Sites CLEAR leaves alone</h3>
+          <p className="muted">Saved on this device only.</p>
+          {settings.everySite.skipSites.length > 0 && (
+            <ul className="skip-list">
+              {settings.everySite.skipSites.map((site) => (
+                <li key={site}>
+                  <span>{site}</span>
+                  <button
+                    type="button"
+                    aria-label={`Stop skipping ${site}`}
+                    onClick={() => setSkipSites(settings.everySite.skipSites.filter((item) => item !== site))}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" onClick={() => void skipCurrentSite()}>
+            Leave the site in this tab alone
+          </button>
+          <p className="muted" role="status">
+            {skipMessage}
+          </p>
+        </section>
       )}
     </main>
   );

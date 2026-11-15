@@ -11,6 +11,7 @@ export async function loadSettings(): Promise<Settings> {
   return {
     calm: withDefaults(DEFAULT_SETTINGS.calm, stored?.calm),
     forecast: withDefaults(DEFAULT_SETTINGS.forecast, stored?.forecast),
+    everySite: withDefaults(DEFAULT_SETTINGS.everySite, stored?.everySite),
     clarify: withDefaults(DEFAULT_SETTINGS.clarify, stored?.clarify),
   };
 }
@@ -19,7 +20,12 @@ function withDefaults<T extends object>(defaults: T, stored: Record<string, unkn
   const result = { ...defaults };
   for (const key of Object.keys(defaults) as Array<keyof T>) {
     const value = stored?.[key as string];
-    if (typeof value === typeof defaults[key]) result[key] = value as T[keyof T];
+    if (Array.isArray(defaults[key])) {
+      // Lists hold strings only (such as host names).
+      if (Array.isArray(value)) result[key] = value.filter((item) => typeof item === 'string') as T[keyof T];
+    } else if (typeof value === typeof defaults[key]) {
+      result[key] = value as T[keyof T];
+    }
   }
   return result;
 }

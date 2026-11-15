@@ -16,7 +16,9 @@ export const AD_CANDIDATES =
 export const POPUP_CANDIDATES =
   'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"], [class*="modal" i], [class*="popup" i], [id*="modal" i], [id*="popup" i]';
 
-const COOKIE_WORDS = /cookie|consent|gdpr|privacy choices|onetrust|cookiebot|usercentrics|didomi|truste|quantcast/i;
+const STRONG_POPUP = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
+
+const COOKIE_WORDS = /cookie|consent|gdpr|privacy choices|privacy[-_ ]?(banner|notice)|onetrust|cookiebot|usercentrics|didomi|truste|quantcast/i;
 
 export function hostOf(src: string): string {
   try {
@@ -82,6 +84,16 @@ export function looksLikeBackdrop(element: Element): boolean {
   const alpha = style.backgroundColor.match(/^rgba\([^)]*[,\s/]\s*([\d.]+)\s*\)$/);
   const opacity = alpha ? Number(alpha[1]) : 1;
   return opacity > 0.05 && opacity < 0.95;
+}
+
+/** A dialog, a popup's backdrop, or something named "modal" or "popup" that floats. */
+export function isPopupLike(element: Element): boolean {
+  if (element.matches(STRONG_POPUP)) return true;
+  if (looksLikeBackdrop(element)) return true;
+  if (!element.matches(POPUP_CANDIDATES)) return false;
+  // "modal" or "popup" in a class name alone is weak: also require it to float.
+  const position = getComputedStyle(element).position;
+  return position === 'fixed' || position === 'absolute';
 }
 
 /** Keep only elements that are not inside another element of the list. */

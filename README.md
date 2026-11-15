@@ -3,7 +3,8 @@
 A Chrome extension that makes web pages calmer and messages clearer, built first for
 autistic and other neurodivergent users.
 
-- **Calm mode** stops autoplay, animation and flashing, and can soften harsh colours.
+- **Calm mode** stops autoplay, animation and flashing, and can soften harsh colours. Use it
+  on one page with a click, or turn it on for every website.
 - **Page Forecast** shows what a page contains (videos, popups, length) before you scroll.
 - **Explain text** says what a message literally means, what it asks of you, and what
   information is missing. Tone cues are shown as possibilities, never as facts.
@@ -20,7 +21,7 @@ which pages a user visits. See [PRIVACY.md](PRIVACY.md).
 | 3 | Page Forecast | Done |
 | 4 | Always on for chosen sites | Not started |
 | 5 | Explain text (on-device first, server fallback) | Not started |
-| 6 | Always on for every site (opt-in) | Not started |
+| 6 | Always on for every site (opt-in) | Done |
 
 ## Testing CLEAR on your computer (team guide)
 
@@ -96,11 +97,16 @@ done.
    | Countdown ("OFFERS END IN …") | Stops within about 5 seconds |
    | "WAIT! DON'T GO!" popup (after 5 seconds) | Hidden, with a notice at the bottom left |
    | Colours | Softer |
-   | Bar at the top | "Page forecast" with videos, moving parts, popups, ads and length |
+   | Box in the bottom-right corner | "Page forecast" with videos, moving parts, popups, ads and length |
    | Flash test (only if flashing light doesn't affect you) | Covered within about a second |
 
 4. Click CLEAR again. Everything should go back to how it was. Videos stay paused, so nothing
    starts by itself.
+
+**Every website:** in the side panel, turn on **Calm every website automatically** and accept
+Chrome's prompt. Open or reload a few real websites: each should calm itself as it loads, with
+**ON** on the CLEAR button. Click CLEAR to undo it on one page. Use **Leave the site in this tab
+alone** to skip a site, and turn the switch off again when you're done.
 
 **Settings:** open Chrome's side panel (the side-panel icon in the toolbar, then choose
 CLEAR) to switch each feature on or off. This includes **Hide cookie banners**, which is off
@@ -113,7 +119,8 @@ time you turn calm mode on.
 
 | Problem | Fix |
 |---|---|
-| Clicking CLEAR does nothing | CLEAR can't run on `chrome://` pages, the Chrome Web Store or new-tab pages. Use the localhost page. |
+| Clicking CLEAR does nothing | CLEAR can't run on `chrome://` pages, the Chrome Web Store or new-tab pages. Use the localhost page. Hover over the button: its tooltip says if the page needs reloading. |
+| A site looks broken with calm mode on | Click CLEAR to undo it on that page, add the site to **Sites CLEAR leaves alone**, and tell the team which site and what broke. |
 | Page shows "This site can't be reached" | The server from step 3 isn't running. Start it again. |
 | "Address already in use" in step 3 | Something else is using port 8000. Use `8001` in the command and the address instead. |
 | Changes you pulled don't show up | Run `npm run build`, reload CLEAR in `chrome://extensions`, then reload the page. |
@@ -125,12 +132,15 @@ table failed, and a screenshot if you can.
 ## Permissions
 
 Requested at install: `activeTab`, `scripting`, `storage`, `sidePanel`.
-CLEAR can only touch a page after you click it or use its shortcut. `contextMenus` will be
-added with "Explain text" (step 5), for its right-click menu item.
+Out of the box, CLEAR can only touch a page after you click it or use its shortcut.
+`contextMenus` will be added with "Explain text" (step 5), for its right-click menu item.
 
-Site access (`optional_host_permissions`) is declared but not yet requested. From step 4 it
-will be requested one site at a time, only when you choose "always on" for that site, and
-can be removed from the side panel at any time.
+Access to all sites (`optional_host_permissions`) is requested only when you turn on
+**Calm every website automatically** in the side panel, and is given back when you turn it off.
+That permission is the only record of the choice: removing CLEAR's site access in
+`chrome://extensions` turns the feature off too. While it is on, the background registers
+`entrypoints/auto.content.ts` for every http and https page. Sites you skip are kept in
+Chrome's local storage on your device.
 
 ## Development
 
@@ -158,8 +168,8 @@ Test pages: open `demo/busy-page.html` (calm mode and forecast) and `demo/thread
   or content script not in `scripts/manifest-permissions.snapshot.json`, or if `connect-src`
   allows more than one outside address. Changing the snapshot needs a privacy review.
 - `scripts/check-no-network.mjs` fails if code that runs inside web pages uses `fetch`, XHR,
-  WebSocket, `sendBeacon`, `EventSource`, WebRTC or a remote URL. It scans both the source
-  and the built bundles.
+  WebSocket, `sendBeacon`, `EventSource`, WebRTC or a remote URL, or if the CSS CLEAR inserts
+  loads anything (`url()` or `@import`). It scans both the source and the built files.
 - `tests/protocol.test.mjs` checks that an "Explain text" request with any field besides
   `text` and `lang` (such as a URL or user ID) is rejected.
 
@@ -168,10 +178,13 @@ Test pages: open `demo/busy-page.html` (calm mode and forecast) and `demo/thread
 | Path | Purpose |
 |---|---|
 | `entrypoints/background.ts` | Service worker: injection, menus, site registration, server calls |
-| `entrypoints/content.ts` | Runs in the page (isolated world): calm mode and forecast |
+| `entrypoints/content.ts` | Injected when you click CLEAR: calm mode and forecast on demand |
+| `entrypoints/auto.content.ts` | Registered for every site when you turn that on: calms pages as they load |
+| `lib/content-main.ts` | What both of those run in the page (isolated world) |
 | `entrypoints/page.content.ts` | Runs in the page's own JavaScript world at page start, for always-on sites |
 | `entrypoints/sidepanel/` | Side panel UI |
 | `lib/protocol.ts` | Settings, messages and the "Explain text" request/response format |
 | `lib/calm.ts`, `lib/forecast.ts` | Calm mode and forecast logic |
+| `public/calm.css` | Calm mode's styles, inserted into pages (inert until calm mode turns them on) |
 | `server/clarify.ts` | "Explain text" server: holds the AI key, stores nothing |
 | `demo/` | Local test pages |

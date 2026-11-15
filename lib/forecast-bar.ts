@@ -1,5 +1,7 @@
-// The Page Forecast bar: a plain strip across the top of the page.
-// It shows one snapshot and never updates or moves by itself.
+// The Page Forecast: a small card in the bottom-right corner. Not a strip
+// across the top, because that covered the logo, menu and sign-in on most
+// sites. It shows one snapshot and never updates or moves by itself.
+// CLEAR's notices sit in the bottom-left corner.
 // Lives in a closed shadow root so page styles can't change it.
 
 import { CLEAR_UI_ATTR } from './cover';
@@ -9,21 +11,23 @@ const STYLE = `
 :host { all: initial; }
 section {
   box-sizing: border-box;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 20px;
-  padding: 8px 16px;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 10px 14px;
   background: #f7f6f2;
   color: #24231f;
-  border-bottom: 1px solid #bdb9ad;
+  border: 1px solid #bdb9ad;
+  border-radius: 4px;
   font: 14px/1.4 system-ui, sans-serif;
 }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 h2 { margin: 0; font-size: 14px; font-weight: 600; }
-ul { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; padding: 0; list-style: none; }
+ul { margin: 0; padding: 0; list-style: none; }
+li { padding: 1px 0; }
 .label { color: #5c5a53; }
 button {
-  margin-left: auto;
+  flex-shrink: 0;
   font: inherit;
   padding: 2px 12px;
   color: #2f5d62;
@@ -34,7 +38,7 @@ button {
 }
 button:focus-visible { outline: 3px solid #2f5d62; outline-offset: 2px; }
 @media (prefers-color-scheme: dark) {
-  section { background: #1d1e1c; color: #e8e6df; border-bottom-color: #4a4b46; }
+  section { background: #1d1e1c; color: #e8e6df; border-color: #4a4b46; }
   .label { color: #a9a69c; }
   button { background: #2a2b28; color: #8fb8bc; border-color: #8fb8bc; }
   button:focus-visible { outline-color: #8fb8bc; }
@@ -59,7 +63,9 @@ function describe(forecast: Forecast): Array<[string, string]> {
     ['Ads', countOrNone(forecast.ads)],
     [
       'Length',
-      `about ${number(forecast.words)} words, ${number(forecast.readingMinutes)} min read, ` +
+      (forecast.words === 0
+        ? 'no text found, '
+        : `about ${number(forecast.words)} words, ${number(forecast.readingMinutes)} min read, `) +
         `${number(forecast.screens)} ${forecast.screens === 1 ? 'screen' : 'screens'}`,
     ],
   ];
@@ -69,7 +75,7 @@ function describe(forecast: Forecast): Array<[string, string]> {
 export function showForecastBar(forecast: Forecast): () => void {
   const host = document.createElement('clear-forecast');
   host.setAttribute(CLEAR_UI_ATTR, '');
-  host.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;display:block;';
+  host.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;display:block;';
   const shadow = host.attachShadow({ mode: 'closed' });
 
   const style = document.createElement('style');
@@ -92,7 +98,10 @@ export function showForecastBar(forecast: Forecast): () => void {
   hide.type = 'button';
   hide.textContent = 'Hide';
   hide.addEventListener('click', () => host.remove());
-  section.append(heading, list, hide);
+  const top = document.createElement('div');
+  top.className = 'top';
+  top.append(heading, hide);
+  section.append(top, list);
   shadow.append(style, section);
 
   document.documentElement.append(host);

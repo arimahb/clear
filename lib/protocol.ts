@@ -39,14 +39,30 @@ export interface ClarifySettings {
   outputLanguage: string;
 }
 
+export interface EverySiteSettings {
+  /**
+   * Sites (host names) the user chose to leave alone while calm mode runs on
+   * every website. Stored on the device only and never sent anywhere.
+   */
+  skipSites: string[];
+}
+
 export interface Settings {
   calm: CalmSettings;
   forecast: ForecastSettings;
+  everySite: EverySiteSettings;
   clarify: ClarifySettings;
 }
 
-// Sites the user has made "always on" are not stored here. The granted
-// optional host permissions (chrome.permissions.getAll) are the only record.
+// Whether calm mode runs on every website is not stored here. The granted
+// optional host permission (chrome.permissions.contains) is the only record,
+// so removing CLEAR's site access in Chrome always turns it off.
+export const EVERY_SITE_ORIGINS = ['https://*/*', 'http://*/*'];
+
+/** Whether a host is on the skip list, or is a subdomain of one that is. */
+export function isSkippedSite(host: string, skipSites: string[]): boolean {
+  return skipSites.some((site) => host === site || host.endsWith(`.${site}`));
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   calm: {
@@ -61,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
     colourMode: 'soften',
   },
   forecast: { showBar: true },
+  everySite: { skipSites: [] },
   clarify: { allowServer: false, previewBeforeSending: true, outputLanguage: 'en' },
 };
 
@@ -77,7 +94,7 @@ export interface Forecast {
   autoplay: number;
   /** Running CSS and script animations, marquees and animated GIFs. */
   moving: number;
-  /** Popups and dialogs, shown now or waiting hidden in the page. */
+  /** Popups and dialogs showing now. Hidden ones may open later. */
   popups: number;
   cookieBanner: boolean;
   ads: number;
@@ -96,6 +113,8 @@ export type Message =
   | { type: 'calm/apply'; settings: CalmSettings; showForecast: boolean }
   | { type: 'calm/undo' }
   | { type: 'calm/status'; active: boolean; changes: number }
+  /** Sent by the top frame when calm mode started by itself (every-website mode), for the badge. */
+  | { type: 'calm/started' }
   | { type: 'forecast/request' }
   | { type: 'forecast/result'; forecast: Forecast }
   | { type: 'clarify/start'; text: string }

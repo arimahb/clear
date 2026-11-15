@@ -20,7 +20,8 @@ must follow. Features marked *not built yet* are not in the extension yet.
 | The Page Forecast (counting videos, popups, words and so on) | On your device |
 | Hiding popups and cookie banners | In the page, on your device. CLEAR never clicks a site's buttons, so it never accepts or refuses cookies for you. Cookie banner hiding is off unless you turn it on. |
 | Your settings | Chrome's local storage on your device. Not synced. |
-| Which sites you made "always on" | Chrome's own permission list on your device |
+| Whether CLEAR calms every website | Chrome's own permission list on your device |
+| Sites you told CLEAR to leave alone | Chrome's local storage on your device. Not synced, never sent. |
 
 Code that runs inside web pages is checked automatically on every change to make sure it
 cannot send anything over the network.
@@ -65,5 +66,5 @@ the server would see your text but not your IP address.
 | `storage` | Saves your settings on your device |
 | `sidePanel` | Shows CLEAR's panel |
 | `contextMenus` *(not requested yet)* | Will add "Explain this with CLEAR" when you right-click selected text |
-| Access to a site you choose *(optional, not built yet)* | Lets CLEAR calm that site as it loads, before you click anything. You approve each site, and you can remove it in the side panel. |
-| Access to all sites *(optional, not built yet)* | Only if you choose it. The rules above still apply: page content never leaves your device. |
+| Access to all sites *(optional)* | Only if you turn on **Calm every website automatically**. Chrome then says CLEAR can "read and change all your data on all websites": CLEAR uses that only to calm each page as it loads, on your device. It never sends the pages you visit, their addresses or their content anywhere. Turning the switch off gives the access back to Chrome. |
+| Access to a site you choose *(optional, not built yet)* | Will let CLEAR calm just the sites you pick as they load. |

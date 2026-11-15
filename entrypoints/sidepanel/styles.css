@@ -80,6 +80,7 @@ h2 {
 }
 
 .options input {
+  flex-shrink: 0;
   margin-top: 4px;
   width: 18px;
   height: 18px;
@@ -117,4 +118,36 @@ fieldset.options legend {
 
 fieldset.options label {
   border-bottom: 1px solid var(--border);
+}
+
+h3 {
+  margin: 16px 0 0;
+  font-size: 0.95rem;
+}
+
+button {
+  font: inherit;
+  padding: 4px 12px;
+  color: var(--accent);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.skip-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.skip-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
 }
